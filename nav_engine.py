@@ -15,8 +15,6 @@ class Engine:
     index: dict
     quelle: str                     # D.QUELLE_WEBSITE oder D.QUELLE_EINGEBAUT
     maschine: ns.Maschine           # über alle Knoten des Index
-    fragen: ns.Maschine             # über die Fragen der Entscheidungsbäume
-    frage_refs: list                # je Frage-Dokument (Baumnummer, Knoten-Id)
     nach_adresse: dict              # Adresse → Demo-Knoten
     demo_zahl: dict                 # Linie → Zahl der Demos
     baeume: list                    # Auswahlliste der Bäume (G.baum_liste)
@@ -25,13 +23,10 @@ class Engine:
 
 
 def build_engine(index: dict, quelle: str) -> Engine:
-    fdocs, refs = ns.frage_dokumente(index)
     return Engine(
         index=index,
         quelle=quelle,
         maschine=ns.Maschine(ns.knoten_dokumente(index), ns.synonym_groups(index["synonyme"])),
-        fragen=ns.Maschine(fdocs),
-        frage_refs=refs,
         nach_adresse=G.knoten_nach_adresse(index),
         demo_zahl=V.demo_zahlen(index),
         baeume=G.baum_liste(index),
@@ -75,11 +70,13 @@ def suchen(eng: Engine, anfrage: str, arten: list[str], bereich: str) -> list[di
 
 
 def vorschlaege(eng: Engine, anfrage: str) -> list[tuple[int, str, dict]]:
-    """Die besten Fragen aus den Entscheidungsbäumen zur Anfrage: [(Baumnummer, Knoten-Id, Baum)], höchstens C.MAX_VORSCHLAEGE."""
+    """Entscheidungsbäume zur Anfrage: [(Baumnummer, Wurzel-Id, Baum)], höchstens C.MAX_VORSCHLAEGE.
+
+    Sie kommen aus den Linien, zu denen die Suche sichere Treffer liefert (`ns.baum_vorschlaege`), nicht aus einem Vergleich der Fragetexte."""
     if not anfrage.strip():
         return []
     out = []
-    for t in eng.fragen.suche(anfrage, limit=C.MAX_VORSCHLAEGE):
-        bi, nid = eng.frage_refs[t["i"]]
-        out.append((bi, nid, eng.index["baeume"][bi]))
+    for bi, _punkte in ns.baum_vorschlaege(eng.index, eng.maschine, anfrage, n=C.MAX_VORSCHLAEGE):
+        baum = eng.index["baeume"][bi]
+        out.append((bi, baum["wurzel"], baum))
     return out

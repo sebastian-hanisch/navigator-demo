@@ -212,18 +212,19 @@ def test_ein_sprung_fuehrt_in_den_anderen_baum_derselben_linie(index):
     assert at.session_state["guide_pfad"] == ()
 
 
-def test_eine_beschriebene_frage_schlaegt_fragen_vor_und_steigt_dort_ein(index):
-    baum = index["baeume"][0]
-    q = baum["knoten"][baum["wurzel"]]["text"]
+def test_eine_beschriebene_frage_schlaegt_linien_vor_und_steigt_dort_ein(index):
     at = _app()
-    at.text_input(key="frage_input").set_value(q).run()
+    at.text_input(key="frage_input").set_value("Gruppen finden in Daten").run()
     assert not at.exception
     knoepfe = [b for b in at.button if b.key and b.key.startswith("vorschlag_")]
     assert 0 < len(knoepfe) <= C.MAX_VORSCHLAEGE
-    knoepfe[0].click().run()
+    assert any(b.label.startswith("Clustering:") for b in knoepfe)  # Beschriftung: Linie, dann die erste Frage
+    clustering = next(b for b in knoepfe if b.label.startswith("Clustering:"))
+    clustering.click().run()
     assert not at.exception
-    assert at.session_state["guide_bi"] is not None
-    assert at.selectbox(key="guide_select").value == at.session_state["guide_bi"]
+    bi = at.session_state["guide_bi"]
+    assert index["baeume"][bi]["linie"] == "konzepte-clustering" and at.session_state["guide_pfad"] == ()
+    assert at.selectbox(key="guide_select").value == bi
 
 
 def test_wechsel_des_filters_loescht_den_pfad_im_fragen_tab_nicht():
@@ -249,7 +250,7 @@ def test_der_link_zur_suche_steht_auch_ohne_treffer():
 def test_eine_frage_ohne_vorschlag_sagt_das():
     at = _app()
     at.text_input(key="frage_input").set_value("xqzvbnwk").run()
-    assert any("keine Frage vor" in c.value for c in at.caption)
+    assert any("keine Linie mit Fragen" in c.value for c in at.caption)
     assert not [b for b in at.button if b.key and b.key.startswith("vorschlag_")]
 
 

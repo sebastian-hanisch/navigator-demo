@@ -105,14 +105,14 @@ def _fragen_tab(eng: E.Engine):
     frage = st.text_input("Oder beschreiben Sie Ihre Frage", key="frage_input", placeholder="z. B. Cluster oder Prognose", max_chars=200)
     vorschl = E.vorschlaege(eng, frage)
     if frage.strip() and not vorschl:
-        st.caption("Dazu schlägt der Navigator keine Frage vor. Wählen Sie oben eine Linie oder probieren Sie andere Wörter.")
+        st.caption("Dazu findet der Navigator keine Linie mit Fragen. Wählen Sie oben eine Linie oder probieren Sie andere Wörter.")
     elif vorschl:
-        st.caption("Fragen aus den Bäumen, die Ihre Wörter enthalten (nur ein Wortvergleich, die Vorschläge können danebenliegen):")
+        st.caption("Linien, zu denen die Suche mit Ihren Wörtern passende Treffer findet; jede führt mit Fragen zur Demo (ein Wortvergleich, die Vorschläge können danebenliegen):")
     for k, (bi, nid, baum) in enumerate(vorschl):
         lin = optionen[bi]
         pfad = G.pfad_zu_knoten(baum, nid) or ()
         st.button(
-            _m(f"{baum['knoten'][nid]['text']}  ·  {lin['linie_titel']}"), key=f"vorschlag_{k}", width="stretch",
+            _m(f"{lin['linie_titel']}: {baum['knoten'][nid]['text']}"), key=f"vorschlag_{k}", width="stretch",
             on_click=_steige, args=(bi, pfad),
         )
     bi = st.session_state.get("guide_bi")
@@ -239,8 +239,8 @@ with st.expander("🚧 Wo die Annahmen enden"):
 - **Lücken der Synonymliste.** Was nicht auf der Liste steht, wird nicht verbunden. Der Navigator sagt dann „nichts Passendes“ oder zeigt
   Treffer, die nur einen Teil der Wörter enthalten.
 - **Die Reihenfolge ist keine Empfehlung.** Ganz oben steht, was die Wörter am besten trifft, nicht, was für Sie am nützlichsten ist.
-- **Die Fragen gehören den Linien.** Ein Entscheidungsbaum gilt für seine Linie und nennt nur Demos dieser Linie. Die Fragen-Vorschläge im Tab
-  „Fragen“ vergleichen ebenfalls nur Wörter und sind schwächer als die Suche: „Gruppen in Daten finden“ führt zu einer Frage der Spieltheorie.
+- **Die Fragen gehören den Linien.** Ein Entscheidungsbaum gilt für seine Linie und nennt nur Demos dieser Linie. Die Vorschläge im Tab
+  „Fragen“ kommen aus den Linien, zu denen die Suche passt; sie sind so gut wie diese Treffer und können danebenliegen.
 - **Nichts wird gespeichert.** Eingaben bleiben in Ihrer Sitzung; die Adresse der App ändert sich nicht, solange Sie nichts teilen. Der Zwischenspeicher der Suche merkt sich nur Wörter, die im Index vorkommen, nie Ihre Wortlaute.
 """
     )

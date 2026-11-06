@@ -8,9 +8,11 @@ Verfahren:
   * Normalisierung: klein, ä/ö/ü → ae/oe/ue, ß → ss, übrige Akzente weg. „kürzester“ und „kuerzester“ sind gleich.
   * Wortstamm: grobe Endungen weg (planen/Planung → plan). Zusammensetzungen bleiben ganz; dafür gibt es die nächsten zwei Stufen.
   * Treffer eines Anfragewortes in einem Wort des Index: gleich (1,0); eines beginnt mit dem anderen oder enthält es, ab fünf Buchstaben (0,7);
-    Tippfehler über die Dice-Ähnlichkeit der Buchstaben-Dreiergruppen ab 0,6 (bis 0,9).
+    Tippfehler über die Dice-Ähnlichkeit der Buchstaben-Dreiergruppen ab 0,6 (bis 0,9) und über den Editierabstand (ein Fehler: 0,9; zwei bei langen Wörtern: 0,85).
   * Gewichtung wie BM25 (seltene Wörter zählen mehr, Titel dreifach, Bereich/Linie 1,5-fach); Stoppwörter fallen heraus.
   * Synonyme (Alltagswort ↔ Fachwort) kommen aus einer von Hand gepflegten Datei und zählen zusätzlich, nicht anstelle.
+  * Treffer „sicher“: Mindestens die Hälfte der Anfragewörter kommt im Eintrag als ganzes Wort vor (Ähnlichkeit ab 0,85: gleiches Wort, ein Tippfehler
+    oder ein Wort der Synonymgruppe). Wortanfänge, Wortteile und ungenaue Tippfehler füllen die Rangfolge auf, machen einen Treffer aber nicht „sicher“.
   * Abdeckung: der Anteil der Anfragewörter (nach Seltenheit gewichtet), den ein Treffer erklärt. Erklärt ein Treffer weniger als die Hälfte
     (nach Seltenheit gewichtet) oder weniger als 30 % (nach Köpfen) der Anfragewörter, fällt er weg; bleibt nichts übrig, meldet `suche`
     „nichts Passendes“ (leere Liste), statt einen Treffer zu erzwingen. Ab der Hälfte nach Köpfen gilt ein Treffer als sicher
@@ -43,6 +45,8 @@ GEWICHT_TITEL, GEWICHT_TEXT, GEWICHT_META = 3.0, 1.0, 1.5
 MIN_ABDECKUNG = 0.5  # Anteil der Anfragewörter (nach Seltenheit gewichtet), den ein Treffer erklären muss
 MIN_ANTEIL = 0.3  # und Anteil nach Köpfen; ab SICHER_ANTEIL gilt der Treffer als sicher, darunter als schwach
 SICHER_ANTEIL = 0.5
+RELATIV_VORSCHLAG = 0.4  # eine vorgeschlagene Linie braucht mindestens so viel vom Wert der besten (gewählt am ersten Auswertungsset: halbiert die Zahl der Vorschläge, ohne dort einen Treffer zu verlieren)
+STARK_SIM = 0.85  # ab dieser Ähnlichkeit gilt ein Anfragewort als „vorhanden“ (gleich oder ein Tippfehler); darunter nur als ähnlich
 K1, B = 1.2, 0.75
 
 
@@ -166,13 +170,16 @@ class Maschine:
                 gq = trigrams(q)
                 cand = {w for t in gq for w in self.tri_index.get(t, ())}
                 for w in cand:
-                    if w in out:
+                    if out.get(w, 0.0) >= 0.9:
                         continue
                     s = dice(gq, self.tri[w])
-                    if s >= 0.6:
-                        out[w] = 0.9 * s
-                    elif len(q) >= 6 and abs(len(q) - len(w)) <= 1 and osa(q, w) <= (1 if len(q) < 9 else 2):
-                        out[w] = 0.85
+                    sim = 0.9 * s if s >= 0.6 else 0.0
+                    if len(q) >= 6 and abs(len(q) - len(w)) <= 1:
+                        d = osa(q, w)  # ein Buchstabe falsch, fehlend, zu viel oder vertauscht: dasselbe Wort (0,9); zwei bei langen Wörtern: 0,85
+                        if d <= (1 if len(q) < 9 else 2):
+                            sim = max(sim, 0.9 if d <= 1 else 0.85)
+                    if sim > out.get(w, 0.0):  # ein Wortanfang oder Wortteil (0,7), der zugleich ein Tippfehler ist („Dijkstraa“), gilt als Tippfehler
+                        out[w] = sim
         res = sorted(out.items())
         if q in self.postings:  # nur Wörter des Index merken; was jemand tippt und der Index nicht kennt, bleibt nicht im Speicher
             self._cache[q] = res
@@ -188,6 +195,14 @@ class Maschine:
                 if v > best.get(i, 0.0):
                     best[i] = v
         return best
+
+    def stark(self, q: str) -> set[int]:
+        """Dokumente, die das Anfragewort als ganzes Wort enthalten (Ähnlichkeit ab STARK_SIM), nicht nur als Wortanfang oder Wortteil."""
+        out: set[int] = set()
+        for w, sim in self.aehnlich(q):
+            if sim >= STARK_SIM:
+                out.update(self.postings[w])
+        return out
 
     def erweiterungen(self, qs: list[str]) -> list[tuple[list[int], list[str]]]:
         """Synonymgruppen, deren Wendung in der Anfrage vorkommt: (Positionen der Wendung, Wörter der übrigen Wendungen)."""
@@ -214,6 +229,10 @@ class Maschine:
         punkte: dict[int, float] = defaultdict(float)
         gedeckt: dict[int, set[int]] = defaultdict(set)
         grund: dict[int, set[str]] = defaultdict(set)
+        stark: dict[int, set[int]] = defaultdict(set)
+        for pos, q in enumerate(qs):
+            for i in self.stark(q):
+                stark[i].add(pos)
         for pos, b in enumerate(eigene):
             for i, v in b.items():
                 punkte[i] += v
@@ -224,6 +243,9 @@ class Maschine:
             for w in set(words):
                 for i, v in self.beitrag(w).items():
                     alt[i] = max(alt[i], 0.8 * v)
+            for w in set(words):
+                for i in self.stark(w):
+                    stark[i].update(positions)
             for i, v in alt.items():
                 punkte[i] += v
                 gedeckt[i].update(positions)
@@ -245,7 +267,7 @@ class Maschine:
                 s *= 1.3
             if norm(d.get("t", "")).strip() == qn:
                 s *= 1.5
-            res.append({"i": i, "punkte": s, "abdeckung": abd, "sicher": anteil >= SICHER_ANTEIL, "grund": sorted(grund[i])})
+            res.append({"i": i, "punkte": s, "abdeckung": abd, "sicher": len(stark[i]) / len(qs) >= SICHER_ANTEIL, "grund": sorted(grund[i])})
         res.sort(key=lambda r: (-r["punkte"], r["i"]))
         return res[:limit]
 
@@ -273,3 +295,27 @@ def laden(site: Path = SITE) -> tuple[dict, Maschine]:
     """Index und Suchmaschine aus `navigator-index.json`; die Synonyme stehen im Index (eine Datenquelle wie in der App)."""
     index = json.loads((site / "navigator-index.json").read_text(encoding="utf-8"))
     return index, Maschine(knoten_dokumente(index), synonym_groups(index.get("synonyme", [])))
+
+
+def baum_vorschlaege(index: dict, maschine: Maschine, anfrage: str, n: int = 3) -> list[tuple[int, float]]:
+    """Entscheidungsbäume, die zur Anfrage passen: [(Baumnummer, Punkte)], höchstens n, beste zuerst.
+
+    Nicht die Fragetexte der Bäume werden verglichen (das fand Fragen nach Wörtern wie „Gruppe“ in der Spieltheorie), sondern die Linien, zu denen die Suche
+    sichere Treffer liefert: Linie, Demo der Linie oder Erklärseite der Linie. Eine Linie sammelt die Punkte ihrer Treffer, spätere Treffer zählen weniger. Eine Linie
+    ohne Entscheidungsbaum zählt nicht; von jeder Linie kommt ihr erster Baum. Eine Linie unter 40 % des Werts der besten wird nicht vorgeschlagen. Ohne sichere Treffer
+    gibt es keinen Vorschlag."""
+    erster: dict[str, int] = {}
+    for bi, b in enumerate(index["baeume"]):
+        erster.setdefault(b["linie"], bi)
+    punkte: dict[str, float] = defaultdict(float)
+    treffer = maschine.suche(anfrage, limit=60, kinds={"Linie", "Demo", "Erklärseite"})
+    for rang, t in enumerate(treffer):
+        if not t["sicher"]:
+            continue
+        slug = index["knoten"][t["i"]].get("s")
+        if slug in erster:
+            punkte[slug] += t["punkte"] / (1 + 0.15 * rang)
+    ranked = sorted(punkte.items(), key=lambda kv: (-kv[1], erster[kv[0]]))
+    if not ranked:
+        return []
+    return [(erster[slug], p) for slug, p in ranked[:n] if p >= RELATIV_VORSCHLAG * ranked[0][1]]

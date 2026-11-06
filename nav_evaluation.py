@@ -1,6 +1,7 @@
 """Verdikte und Texte der Suche: reine Funktionen ohne Streamlit (Gerüst aus tools/new_demo.py, angepasst).
 
-Der Kern (nav_search.py) liefert je Treffer `sicher` (mindestens die Hälfte der Anfragewörter erklärt) und `grund` (getroffene Wortstämme,
+Der Kern (nav_search.py) liefert je Treffer `sicher` (mindestens die Hälfte der Anfragewörter kommt als ganzes Wort vor, gleich oder mit einem Tippfehler;
+Wortanfänge und Wortteile zählen dafür nicht) und `grund` (getroffene Wortstämme,
 „≈ …“ bei Synonymen). Hier wird daraus der Satz über der Trefferliste und der „Warum“-Text je Karte. „Wörter kommen vor“ heißt nur das:
 die Wörter kommen vor. Es heißt nicht, dass der Treffer die richtige Antwort ist."""
 
@@ -15,7 +16,7 @@ STATUS_WOERTER = "woerter"
 
 
 def status(treffer: list[dict]) -> str:
-    """„nichts“ ohne Treffer; „woerter“, wenn mindestens ein Treffer die Hälfte der Anfragewörter erklärt; sonst „teilweise“."""
+    """„nichts“ ohne Treffer; „woerter“, wenn mindestens ein Treffer sicher ist (die Hälfte der Anfragewörter kommt als ganzes Wort vor); sonst „teilweise“."""
     if not treffer:
         return STATUS_NICHTS
     return STATUS_WOERTER if any(t["sicher"] for t in treffer) else STATUS_TEILWEISE
@@ -34,7 +35,7 @@ def status_text(st_: str, n: int, gesamt: int | None = None, ohne_filter: int | 
         zahl = "1 Treffer" if n == 1 else f"{n} Treffer"
     if st_ == STATUS_WOERTER:
         return "info", f"{zahl}: Ihre Wörter kommen vor. Ob es das Gesuchte ist, sagt das nicht; die Beschreibung auf der Karte hilft beim Entscheiden."
-    return "info", f"{zahl}, die nur einen Teil Ihrer Wörter enthalten. Prüfen Sie, ob einer passt."
+    return "info", f"{zahl}, die Ihre Wörter nur zum Teil oder nur als Wortteil enthalten. Prüfen Sie, ob einer passt."
 
 
 def _woerter(text: str) -> list[tuple[str, str]]:

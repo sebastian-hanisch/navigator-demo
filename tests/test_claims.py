@@ -12,7 +12,7 @@ ZAHLWORT = {1: "eine", 2: "zwei", 3: "drei", 4: "vier", 5: "fünf", 6: "sechs", 
 
 def test_sechs_beispiele_und_vier_verworfene():
     assert len(C.PRESETS) == 6 and "Sechs im Schnellstart" in README
-    assert len(C.VERWORFENE_BEISPIELE) == 4 and "Vier weitere Kandidaten" in README
+    assert len(C.VERWORFENE_BEISPIELE) == 4 and "Vier Kandidaten stehen nicht dort" in README
     assert not set(C.VERWORFENE_BEISPIELE) & set(C.PRESETS)
 
 
@@ -96,3 +96,23 @@ def test_die_testzahl_der_readme_stimmt():
                          capture_output=True, text=True, timeout=300).stdout
     n = int(re.search(r"(\d+) tests? collected", out).group(1))
     assert f"Tests: {n}," in README, f"README nennt eine andere Zahl als die Suite ({n})"
+
+
+def test_status_und_vorschlaege_wie_in_der_readme(eng):
+    import nav_engine as E
+    import nav_evaluation as V
+
+    # drei der vier verworfenen Beispiele melden weiterhin „Wörter kommen vor“
+    for q in ("Zwei Messreihen vergleichen", "Lieferungen bündeln", "Stau vermeiden"):
+        assert q in C.VERWORFENE_BEISPIELE and V.status(eng.maschine.suche(q)) == V.STATUS_WOERTER, q
+    assert "Pünktlichkeit im Busverkehr" in C.VERWORFENE_BEISPIELE and "Pünktlichkeit im Busverkehr" not in C.PRESETS
+    adr = [eng.index["knoten"][t["i"]]["u"] for t in eng.maschine.suche("Pünktlichkeit im Busverkehr", limit=5)]
+    assert not any("taktfahrplan" in u or "bunching-demo" in u for u in adr)  # das Ziel des früheren Beispiels steht nicht mehr unter den ersten fünf
+    assert "Wie viele Mitarbeiter pro Schicht" in C.PRESETS and "Wie viele Mitarbeiter pro Schicht" not in C.VERWORFENE_BEISPIELE
+    assert "meldet sie „Ihre Wörter kommen vor“" in README and "Synonyme vom 2026-11-06 haben das behoben" in README
+    assert "hat sein Ziel seit den Änderungen vom 2026-11-06 nicht mehr unter den ersten fünf" in README
+    # Vorschläge: höchstens drei, nur Linien mit Baum, unter 40 % der besten Linie nicht
+    assert C.MAX_VORSCHLAEGE == 3 and ns.RELATIV_VORSCHLAG == 0.4
+    assert "höchstens drei" in README and "unter 40 % des Werts der besten" in README
+    assert all(baum["knoten"][baum["wurzel"]]["art"] == "frage" for _, _, baum in E.vorschlaege(eng, "Prognose"))
+    assert "als ganzes Wort in ihm steht" in README and "Wortanfänge und Wortteile zählen dafür nicht" in README

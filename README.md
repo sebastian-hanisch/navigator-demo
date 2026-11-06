@@ -11,16 +11,16 @@ Die Website ist groß geworden. Das Suchfeld dort findet nur, wenn jedes Suchwor
 
 ## Modell
 
-Der Navigator rechnet nichts über die Sache, nur über Wörter. Die Anfrage wird in Wörter zerlegt (ohne Füllwörter), jedes Wort mit den Wörtern der Einträge verglichen und nach BM25 bewertet: seltene Wörter zählen mehr; die Felder eines Eintrags sind gewichtet (Titel 3, Text 1, Bereichs- und Liniennamen 1,5), danach dämpft die BM25-Formel, ein Titeltreffer wirkt also weniger als dreimal so stark wie ein Texttreffer. Dazu kommen Endungen (planen = Planung), Wortanfänge ab vier Buchstaben, Wortteile ab fünf, Tippfehler (Ähnlichkeit der Buchstabengruppen und Editierabstand) und die Synonymliste. Ein Treffer gilt als „Wörter kommen vor“, wenn er mindestens die Hälfte der Anfragewörter erklärt, sonst als „teilweise“; erklärt er weniger als 30 % der Anfragewörter (nach Köpfen) oder weniger als die Hälfte (nach Seltenheit gewichtet), fällt er weg. Der Kern steht in `nav_search.py`, einer byte-genauen Kopie von `tools/navigator_search.py` im Website-Repo.
+Der Navigator rechnet nichts über die Sache, nur über Wörter. Die Anfrage wird in Wörter zerlegt (ohne Füllwörter), jedes Wort mit den Wörtern der Einträge verglichen und nach BM25 bewertet: seltene Wörter zählen mehr; die Felder eines Eintrags sind gewichtet (Titel 3, Text 1, Bereichs- und Liniennamen 1,5), danach dämpft die BM25-Formel, ein Titeltreffer wirkt also weniger als dreimal so stark wie ein Texttreffer. Dazu kommen Endungen (planen = Planung), Wortanfänge ab vier Buchstaben, Wortteile ab fünf, Tippfehler (Ähnlichkeit der Buchstabengruppen und Editierabstand) und die Synonymliste. Ein Treffer gilt als „Wörter kommen vor“, wenn mindestens die Hälfte der Anfragewörter als ganzes Wort in ihm steht (gleich oder mit einem Tippfehler; Wortanfänge und Wortteile zählen dafür nicht), sonst als „teilweise“. Erklärt ein Treffer weniger als 30 % der Anfragewörter (nach Köpfen) oder weniger als die Hälfte (nach Seltenheit gewichtet), fällt er weg. Der Kern steht in `nav_search.py`, einer byte-genauen Kopie von `tools/navigator_search.py` im Website-Repo.
 
-Der Tab „Fragen“ gibt die Entscheidungsbäume wieder, die auf den Linienseiten stehen (Fragen, Antworten, Demos, Sprünge zwischen Bäumen, Hinweise). Der Navigator erfindet keine eigenen.
+Der Tab „Fragen“ gibt die Entscheidungsbäume wieder, die auf den Linienseiten stehen (Fragen, Antworten, Demos, Sprünge zwischen Bäumen, Hinweise). Der Navigator erfindet keine eigenen. Die Linien, die der Tab vorschlägt, kommen aus der Suche: Es sind die Linien, zu denen die Suche mit Ihren Wörtern sichere Treffer liefert (Linie, Demo der Linie oder Erklärseite der Linie), höchstens drei, und nur solche mit Entscheidungsbaum; eine Linie unter 40 % des Werts der besten wird nicht vorgeschlagen.
 
 ## Methodik
 
 - **Daten.** `navigator-index.json` der Website, erzeugt aus denselben Beschreibungen wie die Seiten (`tools/build_navigator_index.py`). Die App holt sie mit vier Sekunden Zeitlimit je Netzwerkschritt und höchstens zehn Sekunden insgesamt; eine Weiterleitung auf eine fremde Adresse zählt als Fehler. Sie hält die Datei sechs Stunden im Speicher. Schlägt der Abruf fehl, ist die Datei nicht gültig (Schemaversion, Felder, Verweise in den Bäumen) oder lässt sich aus ihr keine Suchumgebung bauen, gilt die eingebaute Kopie in `data/`; nach zehn Minuten versucht die App die Website erneut. Die Seitenleiste nennt die Quelle und den Stand.
 - **Adressen.** Verlinkt wird nur auf die Website und ihre Streamlit-Demos; jede andere Adresse im Index (auch eine mit Port oder Zugangsdaten) wird nicht verlinkt. Alle Texte aus dem Index werden für Markdown entschärft, weil der Index über das Netz kommt.
 - **Adresszeile.** `?q=…` wird gelesen, nie geschrieben: Eingaben können Persönliches enthalten. Wer eine Suche teilen will, bekommt den Link auf Wunsch angezeigt (auch ohne Treffer).
-- **Beispielanfragen.** Sechs im Schnellstart, keine aus dem Auswertungsset im Website-Repo. Vier weitere Kandidaten fanden bei meiner Durchsicht am 2026-11-05 nichts Passendes und stehen deshalb nicht dort (`VERWORFENE_BEISPIELE` in `nav_constants.py`); sie sind Lücken der Suche, keine Beispiele.
+- **Beispielanfragen.** Sechs im Schnellstart, keine aus dem Auswertungsset im Website-Repo. Vier Kandidaten stehen nicht dort (`VERWORFENE_BEISPIELE` in `nav_constants.py`): „Zwei Messreihen vergleichen“, „Lieferungen bündeln“ und „Stau vermeiden“ fanden bei meiner Durchsicht am 2026-11-05 nichts Passendes, und „Pünktlichkeit im Busverkehr“ hat sein Ziel seit den Änderungen vom 2026-11-06 nicht mehr unter den ersten fünf Treffern; sie sind Lücken der Suche, keine Beispiele. „Wie viele Mitarbeiter pro Schicht“ fand am 2026-11-05 nichts, die Synonyme vom 2026-11-06 haben das behoben, deshalb ist es jetzt ein Beispiel.
 
 ## Befunde (gemessen, keine Behauptungen)
 
@@ -36,10 +36,10 @@ Die Güte der Suche selbst (Treffer unter den ersten fünf bei 52 Anfragen, gege
 
 ## Ehrliche Grenzen
 
-- **Wörter, kein Verstehen.** „Wörter kommen vor“ heißt nicht „passt zu Ihrem Problem“. Bei Anfragen in ganz anderen Wörtern als denen der Website findet die Suche nichts oder Falsches. Beim Probelauf der Beispiele fand etwa „Pünktlichkeit im Busverkehr“ als ersten Treffer eine Demo zu Verkehrsumlegung (Wort „Verkehr“) und erst danach die Taktfahrplan-Demo.
-- **Die Statuszeile prüft nur Wörter.** Auch bei den vier verworfenen Beispielen meldet sie „Ihre Wörter kommen vor“, obwohl nichts Passendes dabei ist; sie sagt nichts über die Richtigkeit. Bei „Daten sinnvoll in Gruppen teilen“ steht an erster Stelle eine Grundlagen-Frage zu Bestenlisten, die Themenseite zur Clusteranalyse erst auf Platz 2.
+- **Wörter, kein Verstehen.** „Wörter kommen vor“ heißt nicht „passt zu Ihrem Problem“. Bei Anfragen in ganz anderen Wörtern als denen der Website findet die Suche nichts oder Falsches. „Pünktlichkeit im Busverkehr“ zum Beispiel findet das Wort „Busverkehr“ in Einträgen zu ganz anderen Verfahren und die Takt-Demos nicht mehr unter den ersten fünf.
+- **Die Statuszeile prüft nur Wörter.** Bei „Zwei Messreihen vergleichen“, „Lieferungen bündeln“ und „Stau vermeiden“ (drei der vier verworfenen Beispiele) meldet sie „Ihre Wörter kommen vor“, obwohl nichts Passendes dabei ist. Das Signal trennt gute von schlechten Treffern nur teilweise; es sagt nichts über die Richtigkeit. Bei „Daten sinnvoll in Gruppen teilen“ steht an erster Stelle eine Grundlagen-Frage zu Bestenlisten, die Themenseite zur Clusteranalyse erst auf Platz 2.
 - **Tippfehler** verzeiht die Suche erst bei Wörtern ab fünf Buchstaben; „Toru“ statt „Tour“ findet nichts. Einzelne Buchstaben und Ziffern zählen nicht als Suchwörter.
-- **Die Fragen-Vorschläge im Tab „Fragen“** vergleichen ebenfalls nur Wörter und sind schwächer als die Suche: „Gruppen in Daten finden“ führt zu einer Frage der Spieltheorie, „Cluster“ zur Clustering-Linie.
+- **Die Vorschläge im Tab „Fragen“** sind so gut wie die Treffer der Suche, aus denen sie entstehen. Früher verglichen sie die Fragetexte der Bäume und lagen oft daneben („Gruppen in Daten finden“ führte zu einer Frage der Spieltheorie); jetzt kommen sie aus den Linien der Suche, können aber ebenfalls danebenliegen, und für Anfragen ohne sichere Treffer gibt es keinen Vorschlag.
 - **Trefferzahl.** Die Statuszeile nennt bei mehr als 15 Treffern „Die ersten 15 von N Treffern“; N zählt die Treffer des Kerns nach den Filtern, höchstens 400.
 - **Lücken der Synonymliste.** Die Liste ist von Hand geschrieben und wurde nachträglich um die Alltagswörter erweitert, die ein erster Messlauf vermisst hatte; sie ist deshalb für die dort gemessenen Anfragen besser als für neue.
 - **Die Reihenfolge ist keine Empfehlung.** Ganz oben steht, was die Wörter am besten trifft.
@@ -51,7 +51,7 @@ Die Güte der Suche selbst (Treffer unter den ersten fünf bei 52 Anfragen, gege
 
 Die Suite mit pytest (Zahl und Laufzeit siehe unten) deckt: Kern (Eigenschaften und Orakel), Daten (Prüfung, Abruf, Rückfall, Adressen, Texte), Entscheidungsbäume, Verdikte, Layout und die App mit `AppTest`, dazu Footer, Laufzeit-Importe und die Zahlen dieser README. Kein Test geht ins Netz. Getestet wird mit der Streamlit-Version, die die Cloud installiert (`requirements.txt` begrenzt sie auf unter 1.55).
 
-Tests: 159, Laufzeit rund eine halbe Minute.
+Tests: 164, Laufzeit rund eine halbe Minute.
 
 ## Dateistruktur
 

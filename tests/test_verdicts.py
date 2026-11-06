@@ -23,7 +23,7 @@ def test_statussatz_je_status_und_zahlwort():
     art, satz = V.status_text(V.STATUS_WOERTER, 12)
     assert satz.startswith("12 Treffer:") and "sagt das nicht" in satz  # sagt ausdrücklich, dass das nichts über die Richtigkeit besagt
     art, satz = V.status_text(V.STATUS_TEILWEISE, 3)
-    assert art == "info" and "nur einen Teil" in satz and satz.startswith("3 Treffer,")
+    assert art == "info" and "nur zum Teil oder nur als Wortteil" in satz and satz.startswith("3 Treffer,")
 
 
 def test_getroffene_woerter_in_der_schreibweise_der_eingabe():

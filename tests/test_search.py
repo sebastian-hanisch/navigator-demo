@@ -66,12 +66,32 @@ def test_leere_anfrage_gibt_nichts(eng):
     assert E.vorschlaege(eng, "") == []
 
 
-def test_vorschlaege_nennen_eine_frage_der_baeume(eng):
-    q = eng.index["baeume"][0]["knoten"][eng.index["baeume"][0]["wurzel"]]["text"]
-    v = E.vorschlaege(eng, q)
+def test_vorschlaege_kommen_aus_den_linien_der_suche_und_haben_einen_baum(eng):
+    v = E.vorschlaege(eng, "Cluster")
     assert 0 < len(v) <= C.MAX_VORSCHLAEGE
-    assert any(baum["knoten"][nid]["text"] == q for _, nid, baum in v)
-    assert all(baum["knoten"][nid]["art"] == "frage" for _, nid, baum in v)
+    assert any(baum["linie"] == "konzepte-clustering" for _, _, baum in v)
+    for bi, nid, baum in v:
+        assert baum is eng.index["baeume"][bi] and nid == baum["wurzel"] and baum["knoten"][nid]["art"] == "frage"
+    assert len({baum["linie"] for _, _, baum in v}) == len(v)  # je Linie höchstens ein Vorschlag
+
+
+def test_alltagswoerter_fuehren_ueber_die_synonyme_zur_linie(eng):
+    linien = {baum["linie"] for _, _, baum in E.vorschlaege(eng, "Gruppen finden in Daten")}
+    assert "konzepte-clustering" in linien  # früher kam hier eine Frage der Spieltheorie
+    assert "konzepte-spieltheorie" not in {baum["linie"] for _, _, baum in E.vorschlaege(eng, "Cluster")}
+
+
+def test_ohne_sichere_treffer_gibt_es_keinen_vorschlag(eng):
+    assert E.vorschlaege(eng, "xqzvbnwk") == [] and E.vorschlaege(eng, "   ") == []
+
+
+def test_eine_schwache_linie_wird_nicht_neben_einer_starken_vorgeschlagen(eng):
+    import nav_search as ns
+
+    for q in ("Cluster", "Schichtplan erstellen", "Zeitreihe vorhersagen", "Sitzplätze fair verteilen"):
+        vs = ns.baum_vorschlaege(eng.index, eng.maschine, q, n=3)
+        if vs:
+            assert all(p >= ns.RELATIV_VORSCHLAG * vs[0][1] for _, p in vs), q
 
 
 @pytest.mark.parametrize("name", list(C.PRESETS))
@@ -120,3 +140,14 @@ def test_trefferzahl_ist_die_gesamtzahl_nach_den_filtern(eng):
     assert len(treffer) == C.MAX_TREFFER and gesamt > len(treffer)
     assert E.suchen_mit_zahl(eng, "", list(C.ALLE_ARTEN), C.ALLE_BEREICHE) == ([], 0)
     assert E.suchen(eng, "Verfahren", list(C.ALLE_ARTEN), C.ALLE_BEREICHE) == treffer
+
+
+def test_ein_wortteil_macht_einen_treffer_nicht_sicher():
+    import nav_search as ns
+
+    m = ns.Maschine([{"k": "Demo", "t": "Verkehrsplanung am Hafen", "d": "", "m": ""}, {"k": "Demo", "t": "Der Verkehr im Netz", "d": "", "m": ""}])
+    treffer = {t["i"]: t["sicher"] for t in m.suche("Busverkehr Verkehr")}
+    assert treffer[1] is True and treffer[0] is False  # „Verkehr“ als ganzes Wort gegen „Verkehrs“ als Wortanfang
+    gleich = ns.Maschine([{"k": "Demo", "t": "Dijkstra am Straßennetz", "d": "", "m": ""}])
+    assert gleich.suche("Dijkstraa")[0]["sicher"] is True  # ein Tippfehler zählt noch als das Wort
+    assert gleich.suche("Dijk")[0]["sicher"] is False or gleich.suche("Dijk") == []  # ein Wortanfang nicht

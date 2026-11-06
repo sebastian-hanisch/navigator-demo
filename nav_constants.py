@@ -37,23 +37,24 @@ DEMO_HOST_ENDE = ".streamlit.app"
 DEMO_HOST_ANFANG = "sebastianhanisch-"
 
 # Beispielanfragen (Schnellstart). Keine stammt aus dem Auswertungsset des Website-Repos. Jede hat ein erwartetes Ziel, das ein Test unter
-# den ersten fünf Treffern verlangt. Vier weitere Kandidaten (Mitarbeiter pro Schicht, zwei Messreihen vergleichen, Lieferungen bündeln,
-# Stau vermeiden) fanden beim Probelauf am 2026-11-05 nichts Passendes und stehen deshalb nicht hier; sie sind Lücken der Suche, keine Beispiele.
+# den ersten fünf Treffern verlangt. Vier Kandidaten stehen nicht hier: „Zwei Messreihen vergleichen“, „Lieferungen bündeln“ und „Stau vermeiden“ fanden
+# beim Probelauf am 2026-11-05 nichts Passendes, „Pünktlichkeit im Busverkehr“ hat sein Ziel nach den Änderungen vom 2026-11-06 nicht mehr unter den ersten
+# fünf. Sie sind Lücken der Suche, keine Beispiele. „Wie viele Mitarbeiter pro Schicht“ fand am 2026-11-05 nichts und ist seit den Synonymen vom 2026-11-06 ein Beispiel.
 PRESETS = {
     "Welche Maschine zuerst": {"q": "Welche Maschine zuerst"},
     "Sitzplätze fair verteilen": {"q": "Sitzplätze fair verteilen"},
-    "Pünktlichkeit im Busverkehr": {"q": "Pünktlichkeit im Busverkehr"},
+    "Wie viele Mitarbeiter pro Schicht": {"q": "Wie viele Mitarbeiter pro Schicht"},
     "Daten sinnvoll in Gruppen teilen": {"q": "Daten sinnvoll in Gruppen teilen"},
     "Ausfälle vorhersagen": {"q": "Ausfälle vorhersagen"},
     "Welche Mannschaft ist wirklich stärker": {"q": "Welche Mannschaft ist wirklich stärker"},
 }
-VERWORFENE_BEISPIELE = ("Wie viele Mitarbeiter pro Schicht", "Zwei Messreihen vergleichen", "Lieferungen bündeln", "Stau vermeiden")
+VERWORFENE_BEISPIELE = ("Pünktlichkeit im Busverkehr", "Zwei Messreihen vergleichen", "Lieferungen bündeln", "Stau vermeiden")
 PRESET_HELP = {name: "Diese Anfrage ins Suchfeld setzen und suchen." for name in PRESETS}
 # erwartetes Ziel je Beispiel: ein Teilstring der Adresse; der Test verlangt ihn unter den ersten fünf Treffern
 PRESET_ZIELE = {
     "Welche Maschine zuerst": ("scheduling-demo", "shifting-bottleneck-demo", "konzepte-klassische-scheduling-theorie"),
     "Sitzplätze fair verteilen": ("konzepte-abstimmen-fair-teilen", "sitzverteilung-demo"),
-    "Pünktlichkeit im Busverkehr": ("taktfahrplan", "bunching-demo"),
+    "Wie viele Mitarbeiter pro Schicht": ("shift-demo", "schichtplanung"),
     "Daten sinnvoll in Gruppen teilen": ("clusteranalyse", "konzepte-clustering"),
     "Ausfälle vorhersagen": ("konzepte-zeitreihen-prognose", "naive-forecast-demo", "forecast"),
     "Welche Mannschaft ist wirklich stärker": ("team-einzel-demo", "konzepte-ranking", "bradley-terry-demo", "elo-demo"),
