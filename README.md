@@ -1,7 +1,6 @@
 # Navigator – die passende Demo finden – Streamlit-Demo
 
-<!-- TODO nach dem Deploy: direkt hierher den Live-Link setzen (Leerzeile davor und danach):
-**[→ Demo live ausprobieren](https://sebastianhanisch-navigator-demo.streamlit.app/)** -->
+**[→ Demo live ausprobieren](https://sebastianhanisch-navigator-demo.streamlit.app/)**
 
 Werkzeug für die Website „Sebastian Hanisch – Operations Research und Machine Learning“: eine Suche über die Beschreibungen der Website (Bereiche, Linien, Konzepte-Demos, Fall-Demos, Erklärseiten, Themenseiten, Grundlagen) und ein Führer durch die Entscheidungsbäume der Linien. Es ist die ausführlichere Schwester des Suchfelds auf der Seite „Algorithmen und Verfahren erklärt“. Kein Sprachmodell, kein Konto, nichts wird gespeichert.
 
